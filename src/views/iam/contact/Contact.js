@@ -1,0 +1,287 @@
+import {transDate, getDay} from 'utils/'
+
+export default {
+    name: 'contact',
+    data() {
+        return {
+            //查询条件
+            searchParams: {
+                name: '',
+            },
+
+            //分页信息
+            total: 0,
+            pageNum: 1,
+            pageSize: 10,
+
+            //弹窗表单
+            saveForm: {
+                id: '',
+                name: '',
+                groups: [],
+                contactChannels: [],
+            },
+
+            contactGroupData: [],
+            groupTotal: 0,
+            groupPageNum: 1,
+            groupPageSize: 10,
+
+            dialogVisible: false,
+            dialogTitle: '',
+            dialogLoading: false,
+
+            contactData: [],
+
+
+
+            //group
+            //查询条件
+            searchGroupParams: {
+                name: '',
+            },
+
+            rules: {
+                name: [{ required: true, message: 'Please input name', trigger: 'blur' }],
+            },
+            submitLoading: false,
+            groupLoading: false
+        }
+    },
+
+    mounted() {
+        this.groupList();
+        this.getData();
+        this.getGroupData();
+
+    },
+
+    methods: {
+
+        onSubmit() {
+            this.pageNum = 1;
+            this.getData();
+        },
+
+        currentChange(i) {
+            this.pageNum = i;
+            this.getData();
+        },
+
+        currentChangeGroup(i) {
+            //this.loading = true;
+            this.groupPageNum = i;
+            this.getGroupData();
+        },
+
+
+
+        // 获取列表数据
+        getData() {
+            this.submitLoading = true;
+
+            this.$$api_iam_contactList({
+                data: {
+                    name: this.searchParams.name,
+                    pageNum: this.pageNum,
+                    pageSize: this.pageSize,
+                },
+                fn: json => {
+                    this.submitLoading = false;
+                    this.total = json.data.total;
+                    this.contactData = json.data.records;
+                },
+                errFn: () => {
+                    this.submitLoading = false;
+                }
+            })
+        },
+
+        cleanSaveForm() {
+            this.saveForm = {
+                id: '',
+                name: '',
+                groups: [],
+                contactChannels: [],
+            };
+        },
+        addContact() {
+            this.groupList();
+
+            this.cleanSaveForm();
+            this.dialogVisible = true;
+            this.dialogTitle = 'Add notification contacts';
+        },
+        // 获取列表数据
+        groupList() {
+            this.$$api_iam_groupList({
+                data: {},
+                fn: json => {
+                    this.contactGroupData = json.data;
+                }
+            })
+        },
+
+        saveContact() {
+            this.dialogLoading = true;
+            this.$refs['saveForm'].validate((valid) => {
+                if (valid) {
+                    this.$$api_iam_saveContact({
+                        data: this.saveForm,
+                        fn: json => {
+                            this.dialogLoading = false;
+                            this.getData();
+                            this.cleanSaveForm();
+                            this.dialogVisible = false;
+                        },
+                        errFn: () => {
+                            this.dialogLoading = false;
+                            this.$message.error('request error');
+                        }
+                    });
+                } else {
+                    this.dialogLoading = false;
+                    console.log('error submit!!');
+                    return false;
+                }
+            });
+        },
+
+        editContact(row) {
+            this.groupList();
+            if (!row.id) {
+                return;
+            }
+            this.$$api_iam_contactDetail({
+                data: {
+                    id: row.id,
+                },
+                fn: json => {
+                    this.saveForm = json.data.contact;
+                }
+            })
+
+            this.dialogVisible = true;
+            this.dialogTitle = '编辑';
+        },
+
+
+        delContact(row) {
+            if (!row.id) {
+                return;
+            }
+            this.$confirm('Confirm?', 'warning', {
+                confirmButtonText: 'OK',
+                cancelButtonText: 'Cancel',
+                type: 'warning'
+            }).then(() => {
+                this.$$api_iam_delContact({
+                    data: {
+                        id: row.id,
+                    },
+                    fn: json => {
+                        this.$message({
+                            message: '删除成功',
+                            type: 'success'
+                        });
+                        this.getData();
+                    }
+                })
+            }).catch(() => {
+                //do nothing
+            });
+
+        },
+
+
+//=============================group=============================
+        searchGroup(){
+            this.groupPageNum = 1;
+            this.getGroupData();
+        },
+
+
+        getGroupData() {
+            this.groupLoading = true;
+            this.$$api_iam_contactGroupList({
+                data: {
+                    name: this.searchGroupParams.name,
+                    pageNum: this.groupPageNum,
+                    pageSize: this.groupPageSize,
+                },
+                fn: json => {
+                    this.groupLoading = false;
+                    this.groupTotal = json.data.total;
+                    this.contactGroupData = json.data.records;
+                },
+                errFn: () => {
+                    this.groupLoading = false;
+                }
+            })
+        },
+
+        saveGroup(row) {
+            if(!row){
+                return;
+            }
+            this.$$api_iam_saveContactGroup({
+                data: {
+                    id: row.id,
+                    name: row.name,
+                },
+                fn: json => {
+                    this.$message({
+                        message: 'Success',
+                        type: 'success'
+                    });
+                    this.getGroupData();
+                }
+            })
+        },
+
+        addGroup(){
+            this.contactGroupData.push({
+                id: '',
+                name: '',
+            })
+        },
+
+        delContactGroup(row) {
+            if(!row){
+                return;
+            }
+            this.$$api_iam_delContactGroup({
+                data: {
+                    id: row.id,
+                },
+                fn: json => {
+                    this.$message({
+                        message: '删除成功',
+                        type: 'success'
+                    });
+                    this.getGroupData();
+                }
+            })
+        },
+
+        deleteRow(index) {
+            this.saveForm.contactChannels.splice(index, 1);
+        },
+
+        addRow() {
+            if(!this.saveForm.contactChannels){
+                this.saveForm.contactChannels = [];
+            }
+            this.saveForm.contactChannels.push({
+                kind: '',
+                primaryAddress: '',
+                enable: 1,
+                timeOfFreq: '',
+                numOfFreq: '',
+            })
+        },
+
+
+
+    }
+}
