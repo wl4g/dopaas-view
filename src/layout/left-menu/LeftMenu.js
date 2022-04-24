@@ -7,7 +7,9 @@ import SidebarItem from './SidebarItem'
 
 export default {
     name: 'left-menu',
-    components: { SidebarItem },
+    components: {
+        SidebarItem
+    },
     data() {
         return {
             permission_routes: [],
@@ -63,11 +65,18 @@ export default {
                 window.location.href = route;
             } else {
                 if (item.renderTarget && item.renderTarget == '_blank') {
-                    this.$router.push({ path: '/common/middleware', query: { url: item.meta.linkhref } })
+                    this.$router.push({
+                        path: '/common/middleware',
+                        query: {
+                            url: item.meta.linkhref
+                        }
+                    })
                 } else {
                     let base = this.$route.matched[0].path;
                     //this.$router.push({path: base + '/' + route})
-                    this.$router.push({ path: route })
+                    this.$router.push({
+                        path: route
+                    })
                 }
             }
         },
@@ -153,7 +162,9 @@ export default {
 
         // 遮罩层菜单子项点击事件
         handleRouteLinkClick(path) {
-            this.$router.push({ path: path })
+            this.$router.push({
+                path: path
+            })
             this.closeMaskLayer();
             this.lightBoxVisible = false;
         },

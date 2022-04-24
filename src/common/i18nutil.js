@@ -1,5 +1,5 @@
 export default {
-    getCurrentLang(){
+    getCurrentLang() {
         return sessionStorage.getItem("authzPrincipalLangAttributeName");
     },
     getPageTitle: function (target) {
@@ -9,16 +9,19 @@ export default {
             pageTitle = target.displayName;
         }
         if (pageTitle) {
-            return pageTitle + ' - XCloud DevOps PaaS Platform'
+            return pageTitle + ' - DoPasS View'
         } else {
-            return 'XCloud DevOps PaaS Platform'
+            return 'DoPasS View'
         }
     },
     getDisplayByLang(lang) {
         switch (lang) {
-            case 'zh_CN': return '简体中文';
-            case 'en_US': return 'US English';
-            default: return '简体中文';
+            case 'zh_CN':
+                return '简体中文';
+            case 'en_US':
+                return 'US English';
+            default:
+                return '简体中文';
         }
     }
 }

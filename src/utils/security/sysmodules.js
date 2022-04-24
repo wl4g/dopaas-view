@@ -1,6 +1,8 @@
 import router from '../../router'
 import store from '../../store'
-import { Message } from 'element-ui'
+import {
+    Message
+} from 'element-ui'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 import webView from '@/views/webview.vue'
@@ -9,7 +11,9 @@ import Content from 'layout/routeview/Content.vue'
 import cache from '../cache'
 import i18nutil from '../../common/i18nutil'
 
-NProgress.configure({ showSpinner: true }) // NProgress Configuration
+NProgress.configure({
+    showSpinner: true
+}) // NProgress Configuration
 const whiteList = ['/login'] // Anon path whitelist.
 
 // 路由懒加载
@@ -27,7 +31,7 @@ const loadView = (view) => {
 // 校验菜单(路由)字段
 function assertMenu(menu) {
     if ((!menu.path && !menu.routePath) || menu.routeNamespace == '/') {
-        throw Error('Invalid menu routePath or routeNamespace, see e.g: menu.routePath=/iam/user/list, menu.routeNamespace=/list  =>  menu.permission: '+ menu.permission);
+        throw Error('Invalid menu routePath or routeNamespace, see e.g: menu.routePath=/iam/user/list, menu.routeNamespace=/list  =>  menu.permission: ' + menu.permission);
     }
 }
 
@@ -108,7 +112,7 @@ function transform2OneChildrenRoutes(list) {
 
     let i = 0;
     let flatOneChildRoutes = list.filter(item => {
-        if (item.parentId == 0) {//顶级
+        if (item.parentId == 0) { //顶级
             item.path = item.routePath;
             assertMenu(item); // 校验routePath
             item.component = Layout;
@@ -173,20 +177,24 @@ function transform2OneChildrenRoutes(list) {
 }
 
 router.beforeEach(async (to, from, next) => {
+    console.info("111111", to)
     // Start loading progdeepMenuRoutess
     NProgress.start();
 
     document.title = i18nutil.getPageTitle(to.meta);
 
     // determine whether the user has logged in
-    let hasLogin = cache.get("login_username");
+    // TODO
+    // let hasLogin = cache.get("login_username");
+    let hasLogin = true;
     if (!hasLogin) {
         if (whiteList.indexOf(to.path) !== -1) {
             // in the free login whitelist, go directly
             next()
         } else {
             // other pages that do not have permission to access are redirected to the login page.
-            next(`/login?redirect=${to.path}`)
+            // next(`/login?redirect=${to.path}`)
+            next()
             NProgress.done()
         }
         return;
@@ -199,111 +207,114 @@ router.beforeEach(async (to, from, next) => {
     } else {
         // determine whether the user has obtained his permission roles through getInfo
         const hasRoles = store.getters.roles && store.getters.roles.length > 0
-        if (hasRoles) {
-            next()
-        } else {
-            try {
-                // Generate accessible routes map basedon roles
-                const generateRoutes = await store.dispatch('generateRoutes');
-                const cloneGenerateRoutes = JSON.parse(JSON.stringify(generateRoutes));
+        // if (hasRoles) {
+        //     next()
+        // } else {
+        try {
+            // Generate accessible routes map basedon roles
+            const generateRoutes = await store.dispatch('generateRoutes');
+            console.info("11111111", generateRoutes)
+            const cloneGenerateRoutes = JSON.parse(JSON.stringify(generateRoutes));
 
-                let deepChildRoutes = transform2TreeRoutes(generateRoutes.slice());
-                let flatOneChildRoutes = transform2OneChildrenRoutes(cloneGenerateRoutes.slice());
+            let deepChildRoutes = transform2TreeRoutes(generateRoutes.slice());
+            let flatOneChildRoutes = transform2OneChildrenRoutes(cloneGenerateRoutes.slice());
 
-                // 设置动态路由对象
-                (function setAsyncRouter(list) {
-                    list.forEach((item, index) => {
-                        if (item.type == '1') { // 静态菜单路由
-                            // 头部一级菜单
-                            if (item.level == '1') {
+            // 设置动态路由对象
+            (function setAsyncRouter(list) {
+                list.forEach((item, index) => {
+                    if (item.type == '1') { // 静态菜单路由
+                        // 头部一级菜单
+                        if (item.level == '1') {
+                            item.path = item.routePath;
+                            assertMenu(item); // 校验routePath
+
+                            // 默认指向第一个子菜单
+                            if (item.children && item.children.length) {
+                                item.redirect = item.children[0].routePath
+                            }
+                            item.component = Layout;
+                        } else {
+                            // 二级菜单下有子菜单
+                            if (item.children && item.children.length) {
                                 item.path = item.routePath;
-                                assertMenu(item); // 校验routePath
-
-                                // 默认指向第一个子菜单
-                                if (item.children && item.children.length) {
-                                    item.redirect = item.children[0].routePath
-                                }
-                                item.component = Layout;
+                                item.component = Content;
                             } else {
-                                // 二级菜单下有子菜单
-                                if (item.children && item.children.length) {
-                                    item.path = item.routePath;
-                                    item.component = Content;
-                                } else {
-                                    // 二级菜单没有子菜单
-                                    item.path = item.routePath;
-                                    assertMenu(item); // 校验routePath
-                                    let routePath = loadView(item.pageLocation);
-                                    item.component = routePath;
-                                }
-                            }
-                        } else if (item.type == '2') { // 动态菜单路由
-                            item.path = item.routePath ? item.routePath : 'webview' + item.nameEn;
-                            item.component = webView;
-
-                            var expression = item.pageLocation;
-                            var startIndex = expression.indexOf("${");
-                            var endIndex = expression.indexOf("}");
-                            if (startIndex >= 0 && endIndex > 0) {
-                                let sysModuleCache = cache.get("iamSysModules");
-                                var internelExp = expression.substring(startIndex + 2, endIndex);
-                                var parts = internelExp.split(".");
-                                var obj1 = parts[0].replaceAll("'", "").replaceAll("\"", ""); // keyof appName
-                                var obj11 = parts[1].replaceAll("'", "").replaceAll("\"", ""); // keyof extranetBaseUri
-                                item.pageLocation = sysModuleCache[obj1][obj11];
-                            }
-
-                            item.meta = {
-                                linkhref: item.pageLocation
-                            }
-                        } else if (item.type == '3') { // 按钮类菜单
-                            // 页面按钮权限，必须有pageLocation和routePath
-                            if (item.pageLocation && item.routePath) {
+                                // 二级菜单没有子菜单
                                 item.path = item.routePath;
                                 assertMenu(item); // 校验routePath
                                 let routePath = loadView(item.pageLocation);
                                 item.component = routePath;
                             }
-                        } else {
-                            throw Error("Failure to dynamic render menu, because menu type is required or unsupported! menu.type=" + item.type);
                         }
-                        // 处理标签栏标题显示
-                        if (!item.meta) {
-                            item.meta = {}
+                    } else if (item.type == '2') { // 动态菜单路由
+                        item.path = item.routePath ? item.routePath : 'webview' + item.nameEn;
+                        item.component = webView;
+
+                        var expression = item.pageLocation;
+                        var startIndex = expression.indexOf("${");
+                        var endIndex = expression.indexOf("}");
+                        if (startIndex >= 0 && endIndex > 0) {
+                            let sysModuleCache = cache.get("iamSysModules");
+                            var internelExp = expression.substring(startIndex + 2, endIndex);
+                            var parts = internelExp.split(".");
+                            var obj1 = parts[0].replaceAll("'", "").replaceAll("\"", ""); // keyof appName
+                            var obj11 = parts[1].replaceAll("'", "").replaceAll("\"", ""); // keyof extranetBaseUri
+                            item.pageLocation = sysModuleCache[obj1][obj11];
                         }
-                        item.meta.nameZh = item.nameZh;
-                        item.meta.nameEn = item.nameEn;
-                        item.name = item.nameEn;
-                    })
-                })(deepChildRoutes);
 
-                // 查找顶级菜单
-                let rootDeepChildRoutes = deepChildRoutes.filter(n => n.parentId == 0);
-                // 排序顶级菜单
-                rootDeepChildRoutes = rootDeepChildRoutes.sort((a, b) => a.sort - b.sort);
+                        item.meta = {
+                            linkhref: item.pageLocation
+                        }
+                    } else if (item.type == '3') { // 按钮类菜单
+                        // 页面按钮权限，必须有pageLocation和routePath
+                        if (item.pageLocation && item.routePath) {
+                            item.path = item.routePath;
+                            assertMenu(item); // 校验routePath
+                            let routePath = loadView(item.pageLocation);
+                            item.component = routePath;
+                        }
+                    } else {
+                        throw Error("Failure to dynamic render menu, because menu type is required or unsupported! menu.type=" + item.type);
+                    }
+                    // 处理标签栏标题显示
+                    if (!item.meta) {
+                        item.meta = {}
+                    }
+                    item.meta.nameZh = item.nameZh;
+                    item.meta.nameEn = item.nameEn;
+                    item.name = item.nameEn;
+                })
+            })(deepChildRoutes);
 
-                //fullOriginRoutes
-                cache.set('deepChildRoutes', deepChildRoutes);
-                store.commit('update_routList', { routList: rootDeepChildRoutes });
+            // 查找顶级菜单
+            let rootDeepChildRoutes = deepChildRoutes.filter(n => n.parentId == 0);
+            // 排序顶级菜单
+            rootDeepChildRoutes = rootDeepChildRoutes.sort((a, b) => a.sort - b.sort);
 
-                // 动态添加路径
-                router.addRoutes(flatOneChildRoutes);
-                cache.set('flatOneChildRoutes', flatOneChildRoutes);
+            //fullOriginRoutes
+            cache.set('deepChildRoutes', deepChildRoutes);
+            store.commit('update_routList', {
+                routList: rootDeepChildRoutes
+            });
 
-                // hack method to ensure that addRoutes is complete
-                // set the replace: true, so the navigation will not leave a history record
-                next()
-                // next({ ...to, replace: true })
-            } catch (error) {
-                // remove token and go to login page to re-login
-                //await store.dispatch('user/deepMenuRoutesetToken')
-                console.error(error);
-                Message.error(error || 'Has Error')
-                next(`/login?redirect=${to.path}`)
-                NProgress.done()
-            }
+            // 动态添加路径
+            router.addRoutes(flatOneChildRoutes);
+            cache.set('flatOneChildRoutes', flatOneChildRoutes);
+
+            // hack method to ensure that addRoutes is complete
+            // set the replace: true, so the navigation will not leave a history record
+            next()
+            // next({ ...to, replace: true })
+        } catch (error) {
+            // remove token and go to login page to re-login
+            //await store.dispatch('user/deepMenuRoutesetToken')
+            console.error(error);
+            Message.error(error || 'Has Error')
+            next()
+            NProgress.done()
         }
     }
+    // }
 })
 
 router.afterEach(() => {

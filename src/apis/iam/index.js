@@ -299,18 +299,18 @@ export default [
 ]
 
 // [顺序优先特殊接口，直接走ajax]登录完成时，获取路由动态创建菜单
-export function getRoutes() {
-    return new Promise(function (resolve, reject) {
-        ajax({
-            type: 'get',
-            path: '/menu/list',
-            sysModule: global.iam,
-            fn: data => {
-                resolve(data);
-            },
-            errFn: (err) => {
-                reject(err);
-            }
-        });
-    });
-}
+// export function getRoutes() {
+//     return new Promise(function (resolve, reject) {
+//         ajax({
+//             type: 'get',
+//             path: '/menu/list',
+//             sysModule: global.iam,
+//             fn: data => {
+//                 resolve(data);
+//             },
+//             errFn: (err) => {
+//                 reject(err);
+//             }
+//         });
+//     });
+// }

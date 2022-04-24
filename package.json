@@ -1,7 +1,7 @@
 {
   "name": "xcloud-devops-view",
   "version": "v2.0.0",
-  "description": "XCloud DevOps View",
+  "description": "DoPasS View",
   "author": "<wanglsir@gmail.com>",
   "private": true,
   "scripts": {
